@@ -1,0 +1,76 @@
+version: '3'
+services:
+  api:
+    build: .
+    image: 'attack'
+    networks:
+      default:
+        aliases:
+          - attack-api
+    ports:
+      - '3000:80'
+    environment:
+      XDEBUG_CONFIG: 'remote_host=host.docker.internal'
+      PHP_IDE_CONFIG: 'serverName=localhost'
+      DB_HOST: 'attack-database'
+      DB_USER: 'attack'
+      DB_PASSWORD: 'attack'
+      DB_NAME: 'attack'
+    volumes:
+      - ../api/dist:/var/www/html/dist
+      - ../api/php:/var/www/html/php
+      - ../api/templates:/var/www/html/templates
+      - ../api/vendor:/var/www/html/vendor
+      - ../api/.htaccess:/var/www/html/.htaccess
+      - ../api/favicon.ico:/var/www/html/favicon.ico
+      - ../api/index.php:/var/www/html/index.php
+      - ../api/public.key:/var/www/html/public.key
+  database:
+    image: 'mariadb:latest'
+    networks:
+      default:
+        aliases:
+          - attack-database
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: 'attack'
+      MYSQL_USER: 'attack'
+      MYSQL_PASSWORD: 'attack'
+      MYSQL_DATABASE: 'attack'
+    volumes:
+      - ../api/mysqldumps:/docker-entrypoint-initdb.d
+  auth:
+    image: 'node:lts'
+    networks:
+      default:
+        aliases:
+          - attack-auth
+    ports:
+      - '3001:3000'
+    user: 'node'
+    working_dir: /home/node/app
+    volumes:
+      - ../auth:/home/node/app
+    command: 'node server.js'
+  php-my-admin:
+    image: 'phpmyadmin/phpmyadmin:latest'
+    networks:
+      default:
+        aliases:
+          - attack-php-my-admin
+    ports:
+      - '3002:80'
+    environment:
+      PMA_HOST: 'attack-database'
+  composer-install:
+    image: composer
+    command: install --ignore-platform-reqs --no-scripts
+    environment:
+      COMPOSER_VENDOR_DIR: /var/www/vendor
+    volumes:
+      - ../api:/var/www
+    working_dir: /var/www
+networks:
+  default:
+    driver: bridge
